@@ -15,5 +15,9 @@ Wails-приложение (Go + фронтенд), управление кон�
   Go ≥1.21 не запускается на Win7/8.1 (ProcessPrng, PE subsystem 6.4+).
 - `build/windows/installer/project.nsi` не вызывает `wails.checkArchitecture`
   (там жёсткий `AtLeastWin10`); проверяется только amd64.
-- WebView2 на Win7/8.1 ставит evergreen bootstrapper — он автоматически
-  разворачивает v109 (последняя совместимая версия).
+- Целевые машины обычно без интернета, поэтому вместо evergreen bootstrapper'а
+  инсталлятор кладёт bundled fixed-version WebView2 **v109** (последняя
+  совместимая с Win7/8.1) в `$INSTDIR\webview2` — но только если в реестре нет
+  установленного рантайма. `main.go` указывает на него через
+  `Windows.WebviewBrowserPath`. Рантайм скачивается при сборке скриптом
+  `scripts/fetch-webview2-runtime.sh` (pinned sha256, нужен cabextract/7z).

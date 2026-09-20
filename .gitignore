@@ -6,6 +6,7 @@ frontend/dist
 !/build/windows/
 /build/windows/installer/tmp/
 /build/windows/installer/wails_tools.nsh
+/build/windows/installer/webview2/
 /private/
 *.db
 *.db-wal

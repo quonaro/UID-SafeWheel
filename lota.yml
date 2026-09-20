@@ -15,6 +15,7 @@ build:
       # fetching a stock toolchain.
       export PATH="$(./scripts/ensure-legacy-go.sh)/bin:$PATH"
       export GOTOOLCHAIN=local
+      ./scripts/fetch-webview2-runtime.sh
       $HOME/.go/bin/wails build -tags webkit2_41 -ldflags "-s -w" -trimpath -platform windows/amd64 -nsis -installscope user -o safe-wheel-windows-amd64.exe
       rm -rfv ./build/bin/safe-wheel-windows-amd64.exe
   windows:

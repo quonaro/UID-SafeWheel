@@ -81,18 +81,24 @@ Function .onInit
 FunctionEnd
 
 Section
-    !insertmacro wails.webview2runtime
-
-    # The evergreen bootstrapper installs WebView2 v109 on Win7/8.1 (last
-    # supported version). Warn if the runtime is still missing, e.g. when
-    # the machine had no internet access during installation.
+    # Target machines usually have no internet, so the evergreen bootstrapper
+    # (wails.webview2runtime) cannot help there. When no WebView2 runtime is
+    # installed, unpack the bundled fixed-version v109 (the last Win7/8.1-
+    # compatible release, fetched by scripts/fetch-webview2-runtime.sh) next
+    # to the exe; main.go points WebviewBrowserPath at it.
     SetRegView 64
     ReadRegStr $0 HKLM "SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" "pv"
     ${If} $0 == ""
         ReadRegStr $0 HKCU "Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" "pv"
     ${EndIf}
     ${If} $0 == ""
-        MessageBox MB_ICONEXCLAMATION "WebView2 Runtime не установлен (возможно, не было доступа к интернету). ${DISPLAY_NAME} не запустится без него — подключите интернет и установите WebView2 Runtime с сайта Microsoft."
+        DetailPrint "Installing bundled WebView2 Runtime v109"
+        SetOutPath "$INSTDIR\webview2"
+        File /r "webview2\*"
+    ${Else}
+        # A system runtime exists: drop a bundled copy left by a previous
+        # install so the app uses the shared auto-updating runtime.
+        RMDir /r "$INSTDIR\webview2"
     ${EndIf}
 
     SetOutPath $INSTDIR
@@ -119,6 +125,9 @@ Section "uninstall"
 
     # Remove WebView2 data
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}"
+
+    # Remove the bundled fixed-version runtime
+    RMDir /r "$INSTDIR\webview2"
 
     # Remove only the executable and uninstaller; preserve safewheel.db
     Delete "$INSTDIR\${PRODUCT_EXECUTABLE}"

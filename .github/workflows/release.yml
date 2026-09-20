@@ -124,7 +124,18 @@ jobs:
         cache-dependency-path: 'frontend/package-lock.json'
 
     - name: Install NSIS
-      run: sudo apt-get update && sudo apt-get install -y nsis
+      run: sudo apt-get update && sudo apt-get install -y nsis cabextract
+
+    # The NSIS installer bundles the fixed-version WebView2 v109 runtime
+    # (offline install on Win7/8.1 machines without internet).
+    - name: Cache WebView2 runtime
+      uses: actions/cache@v4
+      with:
+        path: build/windows/installer/webview2
+        key: webview2-fixed-109.0.1518.78
+
+    - name: Fetch bundled WebView2 runtime
+      run: ./scripts/fetch-webview2-runtime.sh
 
     - name: Cache Wails CLI
       uses: actions/cache@v4
