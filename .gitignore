@@ -1,6 +1,8 @@
 node_modules
 frontend/dist
 /build/*
+!/build/appicon.png
+!/build/linux/
 !/build/windows/
 /build/windows/installer/tmp/
 /build/windows/installer/wails_tools.nsh

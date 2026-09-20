@@ -19,6 +19,12 @@ func main() {
 
 	slog.Info("starting SafeWheel")
 
+	// WebKitGTK's DMA-BUF renderer crashes on Wayland (Error 71 protocol error).
+	// Disable it; still overridable from the environment for testing.
+	if _, ok := os.LookupEnv("WEBKIT_DISABLE_DMABUF_RENDERER"); !ok {
+		_ = os.Setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "1")
+	}
+
 	// Create an instance of the app structure
 	app := NewApp()
 

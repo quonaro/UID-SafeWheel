@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=ЮИД Безопасное колесо
+Comment=Управление конкурсами «Безопасное колесо»
+Exec=safe-wheel
+Icon=safe-wheel
+Categories=Education;
+Terminal=false

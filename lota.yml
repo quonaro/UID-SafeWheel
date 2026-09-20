@@ -10,15 +10,29 @@ build:
   nsis:
     desc: "Build for Windows (amd64)"
     script: |
+      # go-legacy-win7 toolchain: keeps Windows 7 SP1/8/8.1 support that
+      # upstream Go dropped in 1.21. GOTOOLCHAIN=local prevents it from
+      # fetching a stock toolchain.
+      export PATH="$(./scripts/ensure-legacy-go.sh)/bin:$PATH"
+      export GOTOOLCHAIN=local
       $HOME/.go/bin/wails build -tags webkit2_41 -ldflags "-s -w" -trimpath -platform windows/amd64 -nsis -installscope user -o safe-wheel-windows-amd64.exe
       rm -rfv ./build/bin/safe-wheel-windows-amd64.exe
   windows:
     desc: "Build for Windows (amd64)"
-    script: $HOME/.go/bin/wails build -tags webkit2_41 -ldflags "-s -w" -trimpath -platform windows/amd64 -o safe-wheel-windows-amd64.exe
+    script: |
+      export PATH="$(./scripts/ensure-legacy-go.sh)/bin:$PATH"
+      export GOTOOLCHAIN=local
+      $HOME/.go/bin/wails build -tags webkit2_41 -ldflags "-s -w" -trimpath -platform windows/amd64 -o safe-wheel-windows-amd64.exe
 
   linux:
     desc: "Build for Linux (amd64)"
     script: $HOME/.go/bin/wails build -tags webkit2_41 -ldflags "-s -w" -trimpath -platform linux/amd64 -o safe-wheel-linux-amd64
+
+  appimage:
+    desc: "Build AppImage for Linux (amd64)"
+    script: |
+      $HOME/.go/bin/wails build -tags webkit2_41 -ldflags "-s -w" -trimpath -platform linux/amd64 -o safe-wheel-linux-amd64
+      ./scripts/build-appimage.sh
 
   all:
     desc: "Build for all OS (Windows, Linux)"

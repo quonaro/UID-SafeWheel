@@ -65,11 +65,35 @@ ShowInstDetails show
 
 Function .onInit
    !insertmacro wails.setShellContext
-   !insertmacro wails.checkArchitecture
+
+   # Windows 7 SP1 / 8.1 are supported targets (WebView2 v109 + patched Go
+   # toolchain). wails.checkArchitecture would abort on anything below
+   # Windows 10, so only the CPU architecture is checked here.
+   ${ifnot} ${IsNativeAMD64}
+       IfSilent silentArch notSilentArch
+       silentArch:
+           SetErrorLevel 65
+           Abort
+       notSilentArch:
+           MessageBox MB_ICONSTOP "Для установки требуется 64-разрядная версия Windows."
+           Quit
+   ${endif}
 FunctionEnd
 
 Section
     !insertmacro wails.webview2runtime
+
+    # The evergreen bootstrapper installs WebView2 v109 on Win7/8.1 (last
+    # supported version). Warn if the runtime is still missing, e.g. when
+    # the machine had no internet access during installation.
+    SetRegView 64
+    ReadRegStr $0 HKLM "SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" "pv"
+    ${If} $0 == ""
+        ReadRegStr $0 HKCU "Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" "pv"
+    ${EndIf}
+    ${If} $0 == ""
+        MessageBox MB_ICONEXCLAMATION "WebView2 Runtime не установлен (возможно, не было доступа к интернету). ${DISPLAY_NAME} не запустится без него — подключите интернет и установите WebView2 Runtime с сайта Microsoft."
+    ${EndIf}
 
     SetOutPath $INSTDIR
 
