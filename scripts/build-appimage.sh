@@ -70,8 +70,30 @@ exec "$APPDIR/usr/bin/safe-wheel" "$@"
 EOF
 chmod +x AppDir/AppRun
 
+# Deploy step (no --output yet): the GTK plugin sets RUNPATH=$ORIGIN on every
+# ELF, but the WebKitGTK helper binaries sit in .../webkit2gtk-4.1/ (one level
+# below the bundled libs) - with $ORIGIN they silently fall back to the host's
+# libwebkit2gtk, whose IPC version mismatches the bundled one => blank window.
 ./linuxdeploy --appdir AppDir \
   --plugin=gtk \
+  -e safe-wheel \
+  -d ../../build/linux/safe-wheel.desktop
+
+PATCHELF=patchelf
+if ! command -v patchelf >/dev/null; then
+  curl -fSL -o patchelf.tar.gz \
+    https://github.com/NixOS/patchelf/releases/download/0.18.0/patchelf-0.18.0-x86_64.tar.gz
+  tar -xzf patchelf.tar.gz
+  PATCHELF="$(find . -name patchelf -type f -perm -u+x | head -1)"
+fi
+
+# Cover both layouts: libs may be flat in usr/lib ($ORIGIN/../..) or in the
+# multiarch dir usr/lib/x86_64-linux-gnu ($ORIGIN/..); injected-bundle is one
+# level deeper still.
+find AppDir -path '*webkit2gtk-4.1/*' -type f \
+  -exec "$PATCHELF" --set-rpath '$ORIGIN/..:$ORIGIN/../..:$ORIGIN/../../..' {} +
+
+./linuxdeploy --appdir AppDir \
   --output=appimage \
   -e safe-wheel \
   -d ../../build/linux/safe-wheel.desktop
