@@ -90,12 +90,18 @@ jobs:
     - name: Build AppImage
       run: ./scripts/build-appimage.sh
 
+    # linux/386 is not a wails target; the script compiles natively in an
+    # i386/debian container (frontend/dist and bindings exist by now).
+    - name: Build 32-bit binary (linux/386)
+      run: ./scripts/build-linux-386.sh
+
     - uses: actions/upload-artifact@v4
       with:
         name: safe-wheel-linux-amd64
         path: |
           build/bin/safe-wheel-linux-amd64
           build/bin/safe-wheel-linux-amd64.AppImage
+          build/bin/safe-wheel-linux-386
 
   build-windows:
     runs-on: ubuntu-22.04
@@ -132,10 +138,12 @@ jobs:
       uses: actions/cache@v4
       with:
         path: build/windows/installer/webview2
-        key: webview2-fixed-109.0.1518.78
+        key: webview2-fixed-109.0.1518.78-v2
 
     - name: Fetch bundled WebView2 runtime
-      run: ./scripts/fetch-webview2-runtime.sh
+      run: |
+        ./scripts/fetch-webview2-runtime.sh x64
+        ./scripts/fetch-webview2-runtime.sh x86
 
     - name: Cache Wails CLI
       uses: actions/cache@v4
@@ -185,11 +193,17 @@ jobs:
     - name: Build
       run: wails build -tags webkit2_41 -ldflags "-s -w" -trimpath -platform windows/amd64 -nsis -installscope user -o safe-wheel-windows-amd64.exe
 
+    # wails' -nsis flag only handles amd64/arm64; the script builds the 386
+    # exe and compiles the installer via makensis on project-386.nsi.
+    - name: Build 32-bit executable and installer (windows/386)
+      run: ./scripts/build-nsis-386.sh
+
     - uses: actions/upload-artifact@v4
       with:
         name: safe-wheel-windows-amd64
         path: |
           build/bin/safe-wheel-windows-amd64.exe
+          build/bin/safe-wheel-windows-386.exe
           build/bin/*-installer.exe
 
   release:
@@ -208,4 +222,5 @@ jobs:
         files: |
           artifacts/safe-wheel-linux-amd64/safe-wheel-linux-amd64
           artifacts/safe-wheel-linux-amd64/safe-wheel-linux-amd64.AppImage
+          artifacts/safe-wheel-linux-amd64/safe-wheel-linux-386
           artifacts/safe-wheel-windows-amd64/*-installer.exe

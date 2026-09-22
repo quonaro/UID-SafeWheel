@@ -1,20 +1,28 @@
 #!/usr/bin/env bash
 # Fetches the fixed-version WebView2 runtime v109 (the last release compatible
-# with Windows 7/8.1) into build/windows/installer/webview2/. The NSIS
+# with Windows 7/8.1) into build/windows/installer/webview2/<arch>/. The NSIS
 # installer unpacks it next to the executable when the target machine has no
 # WebView2 runtime - deployment machines usually have no internet access, so
 # the evergreen bootstrapper cannot be used there.
+#
+# Usage: fetch-webview2-runtime.sh [x64|x86]   (default: x64)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+ARCH="${1:-x64}"
+case "$ARCH" in
+    x64) SHA256="7622281cf83de1a35e3a471f432f7a897d65f0a7d3975df08512b7b253dd45c7" ;;
+    x86) SHA256="c507e0df03fe941f6669b74faf713545708653d568d1dce1e683cbe707382253" ;;
+    *) echo "usage: $0 [x64|x86]" >&2; exit 1 ;;
+esac
+
 VERSION="109.0.1518.78"
-CAB="Microsoft.WebView2.FixedVersionRuntime.${VERSION}.x64.cab"
+CAB="Microsoft.WebView2.FixedVersionRuntime.${VERSION}.${ARCH}.cab"
 URL="https://github.com/westinyang/WebView2RuntimeArchive/releases/download/${VERSION}/${CAB}"
-SHA256="7622281cf83de1a35e3a471f432f7a897d65f0a7d3975df08512b7b253dd45c7"
-DEST="build/windows/installer/webview2"
+DEST="build/windows/installer/webview2/$ARCH"
 
 if [ -f "$DEST/msedgewebview2.exe" ]; then
-    echo "WebView2 runtime $VERSION already present in $DEST"
+    echo "WebView2 runtime $VERSION ($ARCH) already present in $DEST"
     exit 0
 fi
 
@@ -38,5 +46,5 @@ else
 fi
 
 mkdir -p "$DEST"
-mv "$tmp/x/Microsoft.WebView2.FixedVersionRuntime.${VERSION}.x64"/* "$DEST/"
-echo "WebView2 fixed runtime $VERSION -> $DEST"
+mv "$tmp/x/Microsoft.WebView2.FixedVersionRuntime.${VERSION}.${ARCH}"/* "$DEST/"
+echo "WebView2 fixed runtime $VERSION ($ARCH) -> $DEST"

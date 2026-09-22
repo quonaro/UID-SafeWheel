@@ -20,6 +20,18 @@ Unicode true
     !define WAILS_INSTALL_SCOPE "user"
 !endif
 
+# INSTALLER_ARCH is defined by project-386.nsi for the 32-bit build
+# (wails build -nsis only supports amd64/arm64, so the x86 installer is
+# compiled by invoking makensis on project-386.nsi directly).
+!ifndef INSTALLER_ARCH
+    !define INSTALLER_ARCH "amd64"
+!endif
+!if "${INSTALLER_ARCH}" == "386"
+    !define WEBVIEW2_SRC "webview2\x86"
+!else
+    !define WEBVIEW2_SRC "webview2\x64"
+!endif
+
 !include "wails_tools.nsh"
 
 # The version information for this two must consist of 4 parts
@@ -59,7 +71,7 @@ ManifestDPIAware true
 Name "${DISPLAY_NAME}"
 Caption "Установка ${DISPLAY_NAME} ${INFO_PRODUCTVERSION}"
 BrandingText " "
-OutFile "..\..\bin\safe-wheel-windows-amd64-installer.exe"
+OutFile "..\..\bin\safe-wheel-windows-${INSTALLER_ARCH}-installer.exe"
 InstallDir "$LOCALAPPDATA\Programs\${INFO_PRODUCTNAME}"
 ShowInstDetails show
 
@@ -69,15 +81,29 @@ Function .onInit
    # Windows 7 SP1 / 8.1 are supported targets (WebView2 v109 + patched Go
    # toolchain). wails.checkArchitecture would abort on anything below
    # Windows 10, so only the CPU architecture is checked here.
-   ${ifnot} ${IsNativeAMD64}
-       IfSilent silentArch notSilentArch
-       silentArch:
-           SetErrorLevel 65
-           Abort
-       notSilentArch:
-           MessageBox MB_ICONSTOP "Для установки требуется 64-разрядная версия Windows."
-           Quit
-   ${endif}
+   !if "${INSTALLER_ARCH}" == "386"
+       # The 32-bit build also runs on 64-bit Windows via WOW64.
+       ${ifnot} ${IsNativeIA32}
+       ${andifnot} ${IsNativeAMD64}
+           IfSilent silentArch notSilentArch
+           silentArch:
+               SetErrorLevel 65
+               Abort
+           notSilentArch:
+               MessageBox MB_ICONSTOP "Для установки требуется Windows на процессоре x86 или x64."
+               Quit
+       ${endif}
+   !else
+       ${ifnot} ${IsNativeAMD64}
+           IfSilent silentArch notSilentArch
+           silentArch:
+               SetErrorLevel 65
+               Abort
+           notSilentArch:
+               MessageBox MB_ICONSTOP "Для установки требуется 64-разрядная версия Windows."
+               Quit
+       ${endif}
+   !endif
 FunctionEnd
 
 Section
@@ -89,12 +115,17 @@ Section
     SetRegView 64
     ReadRegStr $0 HKLM "SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" "pv"
     ${If} $0 == ""
+        # 32-bit Windows has no WOW6432Node; the runtime registers in the
+        # plain view there (SetRegView is a no-op on x86).
+        ReadRegStr $0 HKLM "SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" "pv"
+    ${EndIf}
+    ${If} $0 == ""
         ReadRegStr $0 HKCU "Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}" "pv"
     ${EndIf}
     ${If} $0 == ""
         DetailPrint "Installing bundled WebView2 Runtime v109"
         SetOutPath "$INSTDIR\webview2"
-        File /r "webview2\*"
+        File /r "${WEBVIEW2_SRC}\*"
     ${Else}
         # A system runtime exists: drop a bundled copy left by a previous
         # install so the app uses the shared auto-updating runtime.
@@ -103,7 +134,14 @@ Section
 
     SetOutPath $INSTDIR
 
-    !insertmacro wails.files
+    !if "${INSTALLER_ARCH}" == "386"
+        # wails.files only knows the amd64/arm64 defines; the 386 build passes
+        # its exe via ARG_WAILS_AMD64_BINARY purely to satisfy wails_tools.nsh,
+        # so file the binary directly here.
+        File "/oname=${PRODUCT_EXECUTABLE}" "${ARG_WAILS_AMD64_BINARY}"
+    !else
+        !insertmacro wails.files
+    !endif
 
     # 1. Desktop shortcut
     CreateShortCut "$DESKTOP\${DISPLAY_NAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
