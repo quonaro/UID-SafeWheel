@@ -13,11 +13,25 @@ cd "$(dirname "$0")/.."
 
 # go-legacy-win7 toolchain: keeps Windows 7 SP1/8/8.1 support that upstream
 # Go dropped in 1.21. GOTOOLCHAIN=local prevents it from fetching a stock
-# toolchain.
-export PATH="$(./scripts/ensure-legacy-go.sh)/bin:$PATH"
+# toolchain. CI already puts the toolchain on PATH, so only fetch it when the
+# go on PATH is not the legacy one.
+if ! command -v go | grep -q go-legacy-win7; then
+    export PATH="$(./scripts/ensure-legacy-go.sh)/bin:$PATH"
+fi
 export GOTOOLCHAIN=local
 
-WAILS="${WAILS:-$HOME/.go/bin/wails}"
+# Locally the CLI lives in $HOME/.go/bin (GOPATH=~/.go); CI installs it into
+# $(go env GOPATH)/bin and puts that on PATH.
+if [ -z "${WAILS:-}" ]; then
+    if command -v wails >/dev/null 2>&1; then
+        WAILS="$(command -v wails)"
+    elif [ -x "$HOME/.go/bin/wails" ]; then
+        WAILS="$HOME/.go/bin/wails"
+    else
+        echo "error: wails CLI not found - install it or set WAILS=/path/to/wails" >&2
+        exit 1
+    fi
+fi
 
 if [ ! -f build/windows/installer/wails_tools.nsh ]; then
     echo "wails_tools.nsh missing; running the amd64 nsis build to generate it" >&2
